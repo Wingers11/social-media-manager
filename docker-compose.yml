@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: social_media_manager
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  server:
+    build: ./server
+    env_file: ./server/.env
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/social_media_manager
+      REDIS_URL: redis://redis:6379
+      PORT: 4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: ./server
+    command: node worker.js
+    env_file: ./server/.env
+    environment:
+      DATABASE_URL: postgres://user:password@db:5432/social_media_manager
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  client:
+    build: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  db_data:
